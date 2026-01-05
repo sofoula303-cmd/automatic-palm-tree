@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Invitation</title>
+  <style>
+    :root{
+      --bg-blur: 8px;
+      --card-radius: 18px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+    body{
+      display:grid;place-items:center;
+      background:#f7f7f6;
+      overflow:hidden;
+    }
+
+    /* Background */
+    .bg{
+      position:fixed; inset:0;
+      background: center/cover no-repeat url("background.png");
+      filter: blur(var(--bg-blur)) saturate(0.95) brightness(1.06);
+      transform: scale(1.06);
+    }
+    .vignette{
+      position:fixed; inset:-20%;
+      background: radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.0) 0%, rgba(255,255,255,0.55) 70%, rgba(255,255,255,0.85) 100%);
+      pointer-events:none;
+    }
+
+    /* Click area */
+    .stage{
+      position:relative;
+      width:min(92vw, 520px);
+      aspect-ratio: 2 / 3;
+      display:grid;
+      place-items:center;
+      z-index:2;
+      padding:18px;
+    }
+
+    /* Overlay button */
+    .overlay{
+      position:absolute; inset:0;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:14px;
+      border-radius:24px;
+      background: rgba(255,255,255,0.38);
+      backdrop-filter: blur(10px);
+      border:1px solid rgba(255,255,255,0.55);
+      box-shadow: 0 18px 45px rgba(0,0,0,0.08);
+      cursor:pointer;
+      user-select:none;
+      transition: opacity .35s ease, transform .35s ease;
+    }
+    .overlay.hidden{
+      opacity:0;
+      pointer-events:none;
+      transform: translateY(10px);
+    }
+    .overlay .title{
+      font-size:18px;
+      letter-spacing:.2px;
+      color:#3a3a3a;
+      font-weight:600;
+    }
+    .overlay .hint{
+      font-size:13px;
+      color:#666;
+    }
+    .pill{
+      padding:10px 14px;
+      border-radius:999px;
+      background: rgba(120,80,70,0.10);
+      border:1px solid rgba(120,80,70,0.22);
+      color:#4b2b25;
+      font-weight:600;
+      font-size:13px;
+    }
+
+    /* Card + reveal */
+    .cardWrap{
+      position:relative;
+      width:100%;
+      height:100%;
+      display:grid;
+      place-items:center;
+    }
+
+    .glow{
+      position:absolute;
+      width:112%;
+      height:112%;
+      border-radius:28px;
+      background: radial-gradient(circle at 50% 40%, rgba(255,255,255,0.85), rgba(255,255,255,0.0) 65%);
+      filter: blur(18px);
+      opacity:0;
+      transform: scale(0.95);
+      transition: opacity .6s ease, transform .8s ease;
+      pointer-events:none;
+    }
+
+    img.card{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      border-radius: var(--card-radius);
+      box-shadow: 0 28px 70px rgba(0,0,0,0.22);
+      opacity:0;
+      transform: translateY(28px) scale(0.86) rotate(-2.2deg);
+      filter: blur(10px);
+      transition: opacity .9s ease, transform 1.1s cubic-bezier(.2,.9,.2,1), filter 1.1s ease;
+      pointer-events:none;
+    }
+
+    /* Shimmer sweep */
+    .sweep{
+      position:absolute;
+      inset:0;
+      border-radius: var(--card-radius);
+      overflow:hidden;
+      pointer-events:none;
+      opacity:0;
+    }
+    .sweep::before{
+      content:"";
+      position:absolute;
+      top:-30%;
+      left:-80%;
+      width:55%;
+      height:160%;
+      background: linear-gradient(120deg, rgba(255,255,255,0.0), rgba(255,255,255,0.55), rgba(255,255,255,0.0));
+      transform: rotate(12deg);
+      filter: blur(2px);
+    }
+
+    /* Sparkles canvas */
+    canvas#sparkles{
+      position:absolute;
+      inset:-6%;
+      width:112%;
+      height:112%;
+      pointer-events:none;
+      opacity:0;
+      transition: opacity .35s ease;
+    }
+
+    /* Revealed state */
+    .revealed .glow{
+      opacity:1;
+      transform: scale(1);
+    }
+    .revealed img.card{
+      opacity:1;
+      transform: translateY(0) scale(1) rotate(0deg);
+      filter: blur(0px);
+    }
+    .revealed canvas#sparkles{
+      opacity:1;
+    }
+    .revealed .sweep{
+      opacity:1;
+      animation: sweep 1.25s ease .2s 1 both;
+    }
+    @keyframes sweep{
+      0%{opacity:0}
+      10%{opacity:1}
+      100%{
+        opacity:0;
+        transform: translateX(200%);
+      }
+    }
+
+    /* Tap to close small hint */
+    .toggleHint{
+      position:absolute;
+      bottom:12px;
+      left:50%;
+      transform:translateX(-50%);
+      font-size:12px;
+      color:rgba(0,0,0,0.45);
+      opacity:0;
+      transition: opacity .4s ease;
+      pointer-events:none;
+    }
+    .revealed .toggleHint{opacity:1}
+  </style>
+</head>
+
+<body>
+  <div class="bg"></div>
+  <div class="vignette"></div>
+
+  <div class="stage" id="stage">
+    <div class="cardWrap" id="wrap" aria-label="Invitation">
+      <div class="glow"></div>
+      <canvas id="sparkles"></canvas>
+      <div class="sweep"></div>
+      <img class="card" src="invitation.jpg" alt="Invitation" />
+      <div class="toggleHint">Tap again to hide / show</div>
+    </div>
+
+    <div class="overlay" id="overlay" role="button" aria-label="Tap to open invitation">
+      <div class="title">Tap to open</div>
+      <div class="hint">The invitation will appear</div>
+      <div class="pill">Open Invitation</div>
+    </div>
+  </div>
+
+  <script>
+    const wrap = document.getElementById("wrap");
+    const overlay = document.getElementById("overlay");
+    const canvas = document.getElementById("sparkles");
+    const ctx = canvas.getContext("2d");
+
+    // Handle retina sizing
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      canvas.width = Math.floor(rect.width * dpr);
+      canvas.height = Math.floor(rect.height * dpr);
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+    }
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    // Sparkles
+    let particles = [];
+    function spawnSparkles() {
+      const rect = canvas.getBoundingClientRect();
+      particles = Array.from({length: 70}, () => ({
+        x: (Math.random()*0.9 + 0.05) * rect.width,
+        y: (Math.random()*0.9 + 0.05) * rect.height,
+        vy: -(Math.random()*0.9 + 0.4),
+        vx: (Math.random()-0.5)*0.4,
+        r: (Math.random()*2.2 + 1.2),
+        life: Math.random()*40 + 30,
+        t: 0,
+        tw: Math.random()*1.4 + 0.6
+      }));
+    }
+
+    let raf = null;
+    function animateSparkles() {
+      const rect = canvas.getBoundingClientRect();
+      ctx.clearRect(0,0,rect.width,rect.height);
+
+      for (const p of particles) {
+        p.t += 1;
+        const u = p.t / p.life;
+        if (u >= 1) continue;
+
+        p.x += p.vx;
+        p.y += p.vy;
+
+        const a = Math.pow(Math.sin(Math.PI*u), 1.4) * (0.5 + 0.5*Math.sin(2*Math.PI*p.tw*u));
+        const alpha = Math.max(0, a) * 0.75;
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r*(1.2 - 0.7*u), 0, Math.PI*2);
+        ctx.fill();
+        // tiny cross
+        ctx.globalAlpha = alpha*0.9;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(p.x - p.r*2.2, p.y);
+        ctx.lineTo(p.x + p.r*2.2, p.y);
+        ctx.moveTo(p.x, p.y - p.r*2.2);
+        ctx.lineTo(p.x, p.y + p.r*2.2);
+        ctx.strokeStyle = "#fff";
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      particles = particles.filter(p => p.t / p.life < 1);
+
+      if (wrap.classList.contains("revealed") && particles.length > 0) {
+        raf = requestAnimationFrame(animateSparkles);
+      } else {
+        raf = null;
+      }
+    }
+
+    function reveal() {
+      overlay.classList.add("hidden");
+      wrap.classList.add("revealed");
+      spawnSparkles();
+      if (!raf) animateSparkles();
+    }
+
+    function hide() {
+      wrap.classList.remove("revealed");
+      overlay.classList.remove("hidden");
+      if (raf) cancelAnimationFrame(raf);
+      raf = null;
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+    }
+
+    // Click/tap handlers
+    overlay.addEventListener("click", reveal);
+    wrap.addEventListener("click", () => {
+      if (wrap.classList.contains("revealed")) hide();
+      else reveal();
+    });
+
+    // Optional: keyboard support
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        if (wrap.classList.contains("revealed")) hide();
+        else reveal();
+      }
+    });
+  </script>
+</body>
+</html>
